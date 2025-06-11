@@ -1,10 +1,10 @@
 // App.jsx
+import { Analytics } from "@vercel/analytics/react";
+import { useEffect, useState } from 'react';
+import { Toaster } from 'react-hot-toast';
 import { Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import useFirebaseNotification from './hooks/useFirebaseNotification';
-import { Toaster } from 'react-hot-toast';
 import { getUser } from './utils/jwtUtils';
-import { useEffect, useState } from 'react';
-import { Analytics } from "@vercel/analytics/next";
 // Auth Pages
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
