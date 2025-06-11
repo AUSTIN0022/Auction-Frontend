@@ -65,7 +65,7 @@ const BrowseAuctions = () => {
   const getStatusBadge = (status) => {
     const statusConfig = {
       active: { color: 'bg-green-100 text-green-800 border-green-200', icon: Clock },
-      upcoming: { color: 'bg-blue-100 text-blue-800 border-blue-200', icon: Calendar },
+      pending: { color: 'bg-yellow-100 text-blue-800 border-blue-200', icon: Calendar },
       completed: { color: 'bg-gray-100 text-gray-800 border-gray-200', icon: Eye }
     };
     

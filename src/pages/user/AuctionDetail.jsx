@@ -278,7 +278,7 @@ const RefreshButton = () => {
         return {
           color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
           icon: Clock,
-          label: 'Pending'
+          label: 'Upcoming'
         };
       case 'ended':
       case 'completed':
