@@ -1,6 +1,5 @@
 // src/layouts/user/UserLayout.jsx
 import {
-    Bell,
     ChevronLeft,
     ChevronRight,
     Gavel,
@@ -12,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import NotificationCenter from '../../components/shared/NotificationCenter'; // Import the new component
 import { getUser } from '../../utils/jwtUtils';
 
 const UserLayout = ({ children }) => {
@@ -52,12 +52,6 @@ const UserLayout = ({ children }) => {
       label: 'My Profile', 
       path: '#', 
       icon: User,
-      active: false
-    },
-    { 
-      label: 'Notifications', 
-      path: '#', 
-      icon: Bell,
       active: false
     },
     { 
@@ -245,19 +239,14 @@ const UserLayout = ({ children }) => {
 
           {/* Right section */}
           <div className="flex items-center gap-3">
-            {/* Notifications */}
-            <button className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors">
-              <Bell size={18} className="text-gray-600" />
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                2
-              </span>
-            </button>
+            {/* Replace the old Bell button with NotificationCenter component */}
+            <NotificationCenter />
 
             {/* Profile */}
             <div className="flex items-center gap-3 pl-3 border-l border-gray-200">
               <div className="hidden sm:block text-right">
                 <p className="text-sm font-medium text-gray-900">{user.name}</p>
-                <p className="text-xs text-gray-500"> {user.email}</p>
+                <p className="text-xs text-gray-500">{user.email}</p>
               </div>
               <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
                 <User size={16} className="text-blue-600" />

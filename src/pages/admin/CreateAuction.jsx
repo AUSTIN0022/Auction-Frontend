@@ -3,6 +3,7 @@ import {
     AlertCircle,
     Calendar,
     CheckCircle,
+    Clock,
     DollarSign,
     FileText,
     Image as ImageIcon,
@@ -28,8 +29,12 @@ const CreateAuction = () => {
     basePrice: "",
     emdAmount: "",
     startDate: "",
+    startTime: "",
     endDate: "",
+    endTime: "",
     registrationDeadline: "",
+    registrationDeadlineTime: "",
+    bidInterval: "60", // Default 1 minute in seconds
   });
 
   const [categories, setCategories] = useState([]);
@@ -37,6 +42,18 @@ const CreateAuction = () => {
   const [status, setStatus] = useState("draft");
   const [alert, setAlert] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // Bid interval options
+  const bidIntervalOptions = [
+    { value: "30", label: "30 seconds" },
+    { value: "60", label: "1 minute" },
+    { value: "120", label: "2 minutes" },
+    { value: "300", label: "5 minutes" },
+    { value: "600", label: "10 minutes" },
+    { value: "900", label: "15 minutes" },
+    { value: "1800", label: "30 minutes" },
+    { value: "3600", label: "1 hour" },
+  ];
 
   useEffect(() => {
     getAuctionCategories()
@@ -62,15 +79,67 @@ const CreateAuction = () => {
     setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const validateDates = () => {
+    // Parse dates with IST timezone consideration
+    const regDateTime = new Date(`${form.registrationDeadline}T${form.registrationDeadlineTime}:00+05:30`);
+    const startDateTime = new Date(`${form.startDate}T${form.startTime}:00+05:30`);
+    const endDateTime = new Date(`${form.endDate}T${form.endTime}:00+05:30`);
+    const now = new Date();
+
+    if (regDateTime <= now) {
+      setAlert({ type: "error", message: "Registration deadline must be in the future" });
+      return false;
+    }
+
+    if (startDateTime <= regDateTime) {
+      setAlert({ type: "error", message: "Start date must be after registration deadline" });
+      return false;
+    }
+
+    if (endDateTime <= startDateTime) {
+      setAlert({ type: "error", message: "End date must be after start date" });
+      return false;
+    }
+
+    return true;
+  };
+
+  // Helper function to convert date and time to ISO 8601 with IST timezone
+  const formatToIST = (date, time) => {
+    if (!date || !time) return null;
+    // Create ISO string with IST timezone (+05:30)
+    return `${date}T${time}:00+05:30`;
+  };
+
   const handleSubmit = async (publish = false) => {
     if (images.length < 2) {
       return setAlert({ type: "error", message: "Minimum 2 images required" });
     }
 
+    if (!validateDates()) {
+      return;
+    }
+
     const user = JSON.parse(localStorage.getItem("user"));
     const formData = new FormData();
-    for (let key in form) {
-      formData.append(key, form[key]);
+    
+    // Combine date and time into ISO 8601 format with IST timezone
+    const combinedForm = {
+      categorie: form.categorie,
+      title: form.title,
+      description: form.description,
+      basePrice: form.basePrice,
+      emdAmount: form.emdAmount,
+      bidInterval: form.bidInterval,
+      startDate: formatToIST(form.startDate, form.startTime),
+      endDate: formatToIST(form.endDate, form.endTime),
+      registrationDeadline: formatToIST(form.registrationDeadline, form.registrationDeadlineTime),
+    };
+
+    for (let key in combinedForm) {
+      if (combinedForm[key] !== null) {
+        formData.append(key, combinedForm[key]);
+      }
     }
 
     formData.append("status", publish ? "pending" : "draft");
@@ -79,9 +148,10 @@ const CreateAuction = () => {
 
     try {
       setLoading(true);
+      console.log(`\n\n FormData: ${JSON.stringify(formData)}\n\n`);
       await createAuction(formData);
       setAlert({ type: "success", message: "Auction created successfully!" });
-      setTimeout(() => navigate("/admin-dashboard"), 1500);
+      setTimeout(() => navigate("/admin-dashboard"), 1000);
     } catch (err) {
       setAlert({ type: "error", message: err.response?.data?.message || "Failed to create auction" });
     } finally {
@@ -126,42 +196,44 @@ const CreateAuction = () => {
                   Basic Information
                 </h3>
                 <div className="grid gap-6">
-                  {/* Category */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <Tag className="w-4 h-4 inline mr-1" />
-                      Category *
-                    </label>
-                    <select
-                      name="categorie"
-                      value={form.categorie}
-                      onChange={handleChange}
-                      className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      required
-                    >
-                      <option value="">Select a category</option>
-                      {categories.map((c) => (
-                        <option key={c._id} value={c._id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Title */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Item Title *
+                        </label>
+                        <input
+                        name="title"
+                        value={form.title}
+                        onChange={handleChange}
+                        placeholder="Enter a descriptive title for your auction item"
+                        className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        required
+                        />
+                    </div>
 
-                  {/* Title */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Item Title *
-                    </label>
-                    <input
-                      name="title"
-                      value={form.title}
-                      onChange={handleChange}
-                      placeholder="Enter a descriptive title for your auction item"
-                      className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      required
-                    />
-                  </div>
+                    {/* Category */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <Tag className="w-4 h-4 inline mr-1" />
+                        Category *
+                        </label>
+                        <select
+                        name="categorie"
+                        value={form.categorie}
+                        onChange={handleChange}
+                        className="w-full border  border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors "
+                        required
+                        >
+                        <option value="">Select a category</option>
+                        {categories.map((c) => (
+                            <option key={c._id} value={c._id}>
+                            {c.name}
+                            </option>
+                        ))}
+                        </select>
+                    </div>
+                </div>
 
                   {/* Description */}
                   <div>
@@ -179,6 +251,7 @@ const CreateAuction = () => {
                     />
                   </div>
                 </div>
+
               </div>
 
               {/* Pricing Section */}
@@ -224,57 +297,125 @@ const CreateAuction = () => {
                 </div>
               </div>
 
-              {/* Date Settings Section */}
+              {/* Bidding Settings Section */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-orange-600" />
+                  Bidding Settings
+                </h3>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Bid Interval *
+                  </label>
+                  <select
+                    name="bidInterval"
+                    value={form.bidInterval}
+                    onChange={handleChange}
+                    className="w-full md:w-1/2 border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    required
+                  >
+                    {bidIntervalOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Time interval between consecutive bids during the auction
+                  </p>
+                </div>
+              </div>
+
+              {/* Date & Time Settings Section */}
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Calendar className="w-5 h-5 text-purple-600" />
-                  Date Settings
+                  Date & Time Settings
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-6">
                   
-                  
+                  {/* Registration Deadline */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Registration Deadline *
                     </label>
-                    <input
-                      type="date"
-                      name="registrationDeadline"
-                      value={form.registrationDeadline}
-                      onChange={handleChange}
-                      className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      required
-                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <input
+                        type="date"
+                        name="registrationDeadline"
+                        value={form.registrationDeadline}
+                        onChange={handleChange}
+                        className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        required
+                      />
+                      <input
+                        type="time"
+                        name="registrationDeadlineTime"
+                        value={form.registrationDeadlineTime}
+                        onChange={handleChange}
+                        className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        required
+                      />
+                    </div>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Last date and time for bidders to register (IST)
+                    </p>
                   </div>
                   
+                  {/* Start Date & Time */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Start Date *
+                      Auction Start *
                     </label>
-                    <input
-                      type="date"
-                      name="startDate"
-                      value={form.startDate}
-                      onChange={handleChange}
-                      className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      required
-                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <input
+                        type="date"
+                        name="startDate"
+                        value={form.startDate}
+                        onChange={handleChange}
+                        className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        required
+                      />
+                      <input
+                        type="time"
+                        name="startTime"
+                        value={form.startTime}
+                        onChange={handleChange}
+                        className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        required
+                      />
+                    </div>
+                    <p className="text-sm text-gray-500 mt-1">
+                      When the auction will begin (IST)
+                    </p>
                   </div>
 
-                  
-
+                  {/* End Date & Time */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      End Date *
+                      Auction End *
                     </label>
-                    <input
-                      type="date"
-                      name="endDate"
-                      value={form.endDate}
-                      onChange={handleChange}
-                      className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      required
-                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <input
+                        type="date"
+                        name="endDate"
+                        value={form.endDate}
+                        onChange={handleChange}
+                        className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        required
+                      />
+                      <input
+                        type="time"
+                        name="endTime"
+                        value={form.endTime}
+                        onChange={handleChange}
+                        className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        required
+                      />
+                    </div>
+                    <p className="text-sm text-gray-500 mt-1">
+                      When the auction will end (IST)
+                    </p>
                   </div>
                 </div>
               </div>

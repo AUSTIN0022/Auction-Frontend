@@ -4,6 +4,7 @@ import {
     ArrowLeft,
     Calendar,
     CheckCircle,
+    Clock,
     DollarSign,
     FileText,
     Image as ImageIcon,
@@ -29,8 +30,12 @@ export default function EditAuction() {
     basePrice: '',
     emdAmount: '',
     startDate: '',
+    startTime: '',
     endDate: '',
+    endTime: '',
     registrationDeadline: '',
+    registrationDeadlineTime: '',
+    bidInterval: '60', // Default 1 minute
     status: 'draft',
     categorie: '',
   });
@@ -45,6 +50,29 @@ export default function EditAuction() {
   const MIN_IMAGES = 2;
   const MAX_IMAGES = 5;
 
+  // Bid interval options
+  const bidIntervalOptions = [
+    { value: "30", label: "30 seconds" },
+    { value: "60", label: "1 minute" },
+    { value: "120", label: "2 minutes" },
+    { value: "300", label: "5 minutes" },
+    { value: "600", label: "10 minutes" },
+    { value: "900", label: "15 minutes" },
+    { value: "1800", label: "30 minutes" },
+    { value: "3600", label: "1 hour" },
+  ];
+
+  const user = JSON.parse(localStorage.getItem("user"));
+
+  // Helper function to extract date and time from ISO string
+  const extractDateTime = (isoString) => {
+    if (!isoString) return { date: '', time: '' };
+    const date = new Date(isoString);
+    const dateStr = date.toISOString().split('T')[0];
+    const timeStr = date.toTimeString().slice(0, 5);
+    return { date: dateStr, time: timeStr };
+  };
+
   useEffect(() => {
     async function fetchData() {
       try {
@@ -56,14 +84,24 @@ export default function EditAuction() {
         setCategories(catRes.data.categories || []);
 
         const auction = auctionRes.data.auctionDetails;
+        
+        // Extract date and time components
+        const startDateTime = extractDateTime(auction.startDate);
+        const endDateTime = extractDateTime(auction.endDate);
+        const regDateTime = extractDateTime(auction.registrationDeadline);
+
         setForm({
           title: auction.title,
           description: auction.description,
           basePrice: auction.basePrice,
           emdAmount: auction.emdAmount,
-          startDate: auction.startDate.split('T')[0],
-          endDate: auction.endDate.split('T')[0],
-          registrationDeadline: auction.registrationDeadline.split('T')[0],
+          startDate: startDateTime.date,
+          startTime: startDateTime.time,
+          endDate: endDateTime.date,
+          endTime: endDateTime.time,
+          registrationDeadline: regDateTime.date,
+          registrationDeadlineTime: regDateTime.time,
+          bidInterval: auction.bidInterval || '60',
           status: auction.status,
           categorie: auction.categorie,
         });
@@ -105,21 +143,75 @@ export default function EditAuction() {
     setNewImages((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const validateDates = () => {
+    // Parse dates with IST timezone consideration
+    const regDateTime = new Date(`${form.registrationDeadline}T${form.registrationDeadlineTime}:00+05:30`);
+    const startDateTime = new Date(`${form.startDate}T${form.startTime}:00+05:30`);
+    const endDateTime = new Date(`${form.endDate}T${form.endTime}:00+05:30`);
+    const now = new Date();
+
+    if (regDateTime <= now) {
+      setAlert({ type: "error", message: "Registration deadline must be in the future" });
+      return false;
+    }
+
+    if (startDateTime <= regDateTime) {
+      setAlert({ type: "error", message: "Start date must be after registration deadline" });
+      return false;
+    }
+
+    if (endDateTime <= startDateTime) {
+      setAlert({ type: "error", message: "End date must be after start date" });
+      return false;
+    }
+
+    return true;
+  };
+
   const validateForm = () => {
     const total = existingImages.length + newImages.length;
     if (total < MIN_IMAGES) {
       setAlert({ type: 'error', message: `At least ${MIN_IMAGES} images are required.` });
       return false;
     }
-    return true;
+    return validateDates();
+  };
+
+  // Helper function to convert date and time to ISO 8601 with IST timezone
+  const formatToIST = (date, time) => {
+    if (!date || !time) return null;
+    // Create ISO string with IST timezone (+05:30)
+    return `${date}T${time}:00+05:30`;
   };
 
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
     const formData = new FormData();
-    Object.entries(form).forEach(([key, value]) => formData.append(key, value));
+    
+    // Combine date and time into ISO 8601 format with IST timezone
+    const combinedForm = {
+      title: form.title,
+      description: form.description,
+      basePrice: form.basePrice,
+      emdAmount: form.emdAmount,
+      bidInterval: form.bidInterval,
+      startDate: formatToIST(form.startDate, form.startTime),
+      endDate: formatToIST(form.endDate, form.endTime),
+      registrationDeadline: formatToIST(form.registrationDeadline, form.registrationDeadlineTime),
+      status: form.status,
+      categorie: form.categorie,
+
+    };
+
+    Object.entries(combinedForm).forEach(([key, value]) => {
+      if (value !== null) {
+        formData.append(key, value);
+      }
+    });
+    
     formData.append('auctionId', auctionId);
+    formData.append("createdBy", user.id);
     formData.append('existingImages', JSON.stringify(existingImages));
     formData.append('imagesToRemove', JSON.stringify(imagesToRemove));
     newImages.forEach((file) => formData.append('auction_images', file));
@@ -131,7 +223,7 @@ export default function EditAuction() {
       setTimeout(() => navigate('/view-auctions'), 1500);
     } catch (err) {
       console.error(err);
-      setAlert({ type: 'error', message: 'Failed to update auction. Please try again.' });
+      setAlert({ type: 'error', message: err.response?.data?.message || 'Failed to update auction. Please try again.' });
     } finally {
       setLoading(false);
     }
@@ -205,41 +297,43 @@ export default function EditAuction() {
                   Basic Information
                 </h3>
                 <div className="grid gap-6">
-                  {/* Category */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <Tag className="w-4 h-4 inline mr-1" />
-                      Category *
-                    </label>
-                    <select
-                      name="categorie"
-                      value={form.categorie}
-                      onChange={handleChange}
-                      className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      required
-                    >
-                      <option value="">Select a category</option>
-                      {categories.map((cat) => (
-                        <option key={cat._id} value={cat._id}>
-                          {cat.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Title */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Item Title *
+                      </label>
+                      <input
+                        name="title"
+                        value={form.title}
+                        onChange={handleChange}
+                        placeholder="Enter a descriptive title for your auction item"
+                        className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        required
+                      />
+                    </div>
 
-                  {/* Title */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Item Title *
-                    </label>
-                    <input
-                      name="title"
-                      value={form.title}
-                      onChange={handleChange}
-                      placeholder="Enter a descriptive title for your auction item"
-                      className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      required
-                    />
+                    {/* Category */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <Tag className="w-4 h-4 inline mr-1" />
+                        Category *
+                      </label>
+                      <select
+                        name="categorie"
+                        value={form.categorie}
+                        onChange={handleChange}
+                        className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        required
+                      >
+                        <option value="">Select a category</option>
+                        {categories.map((cat) => (
+                          <option key={cat._id} value={cat._id}>
+                            {cat.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
 
                   {/* Description */}
@@ -303,53 +397,125 @@ export default function EditAuction() {
                 </div>
               </div>
 
-              {/* Date Settings Section */}
+              {/* Bidding Settings Section */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-orange-600" />
+                  Bidding Settings
+                </h3>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Bid Interval *
+                  </label>
+                  <select
+                    name="bidInterval"
+                    value={form.bidInterval}
+                    onChange={handleChange}
+                    className="w-full md:w-1/2 border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    required
+                  >
+                    {bidIntervalOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Time interval between consecutive bids during the auction
+                  </p>
+                </div>
+              </div>
+
+              {/* Date & Time Settings Section */}
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Calendar className="w-5 h-5 text-purple-600" />
-                  Date Settings
+                  Date & Time Settings
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-6">
+                  
+                  {/* Registration Deadline */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Registration Deadline *
                     </label>
-                    <input
-                      type="date"
-                      name="registrationDeadline"
-                      value={form.registrationDeadline}
-                      onChange={handleChange}
-                      className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      required
-                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <input
+                        type="date"
+                        name="registrationDeadline"
+                        value={form.registrationDeadline}
+                        onChange={handleChange}
+                        className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        required
+                      />
+                      <input
+                        type="time"
+                        name="registrationDeadlineTime"
+                        value={form.registrationDeadlineTime}
+                        onChange={handleChange}
+                        className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        required
+                      />
+                    </div>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Last date and time for bidders to register (IST)
+                    </p>
                   </div>
                   
+                  {/* Start Date & Time */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Start Date *
+                      Auction Start *
                     </label>
-                    <input
-                      type="date"
-                      name="startDate"
-                      value={form.startDate}
-                      onChange={handleChange}
-                      className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      required
-                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <input
+                        type="date"
+                        name="startDate"
+                        value={form.startDate}
+                        onChange={handleChange}
+                        className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        required
+                      />
+                      <input
+                        type="time"
+                        name="startTime"
+                        value={form.startTime}
+                        onChange={handleChange}
+                        className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        required
+                      />
+                    </div>
+                    <p className="text-sm text-gray-500 mt-1">
+                      When the auction will begin (IST)
+                    </p>
                   </div>
 
+                  {/* End Date & Time */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      End Date *
+                      Auction End *
                     </label>
-                    <input
-                      type="date"
-                      name="endDate"
-                      value={form.endDate}
-                      onChange={handleChange}
-                      className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      required
-                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <input
+                        type="date"
+                        name="endDate"
+                        value={form.endDate}
+                        onChange={handleChange}
+                        className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        required
+                      />
+                      <input
+                        type="time"
+                        name="endTime"
+                        value={form.endTime}
+                        onChange={handleChange}
+                        className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        required
+                      />
+                    </div>
+                    <p className="text-sm text-gray-500 mt-1">
+                      When the auction will end (IST)
+                    </p>
                   </div>
                 </div>
               </div>
