@@ -63,7 +63,7 @@ function App() {
 
         // Optional: Listen for storage changes (when user logs in/out)
         const handleStorageChange = (e) => {
-            if (e.key === 'token' || e.key === 'user') {
+            if (e.key === 'token' || e.key === 'user' ) {
                 loadUser();
             }
         };
@@ -78,8 +78,8 @@ function App() {
 
   return (
     <>
-    <Toaster position="top-right"/>
       <Router>
+        <Toaster position="top-right"/>
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<LandingPage/>} />

@@ -1,13 +1,15 @@
 // src/hooks/useFirebaseNotification.js
 import { useEffect } from 'react';
-import { messaging, getToken, onMessage } from '../utils/firebase';
-import { registerToken } from '../services/notification';
 import { showNotificationToast } from '../components/shared/Toast';
+import { registerToken } from '../services/notification';
+import { getToken, messaging, onMessage } from '../utils/firebase';
 
 const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY; 
 
 export default function useFirebaseNotification({ userId, role }) {
   useEffect(() => {
+    if (!userId || !role) return;
+    
     const requestPermissionAndRegister = async () => {
       try {
         const permission = await Notification.requestPermission();
@@ -30,7 +32,7 @@ export default function useFirebaseNotification({ userId, role }) {
     requestPermissionAndRegister();
 
     const unsubscribe = onMessage(messaging, (payload) => {
-      console.log('Foreground message received:', payload);
+      console.log('Foreground message received:');
       
       // Use custom toast instead of react-hot-toast default
       showNotificationToast(payload);

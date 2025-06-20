@@ -1,29 +1,31 @@
 // src/components/Toast.jsx
-import React from 'react';
-import toast from 'react-hot-toast';
-import { 
-  Gavel, 
-  RefreshCw, 
-  Play, 
-  Clock, 
-  StopCircle, 
-  TrendingUp, 
-  TrendingDown, 
-  Trophy, 
-  CheckCircle, 
-  XCircle, 
-  CreditCard, 
-  DollarSign, 
-  UserPlus, 
-  TestTube,
-  Bell
+import {
+    Bell,
+    CheckCircle,
+    Clock,
+    CreditCard,
+    DollarSign,
+    Gavel,
+    Play,
+    RefreshCw,
+    StopCircle,
+    TestTube,
+    TrendingDown,
+    TrendingUp,
+    Trophy,
+    UserPlus,
+    XCircle
 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
+
+
 
 // Notification type configurations
 const notificationConfig = {
-  auction_created: {
-    title: 'New Auction Available',
-    icon: Gavel,
+    auction_created: {
+        title: 'New Auction Available',
+        icon: Gavel,
     style: {
       background: '#3B82F6',
       color: '#FFFFFF',
@@ -151,6 +153,7 @@ const notificationConfig = {
 
 // Custom Toast Component
 const CustomToast = ({ type, title, body, data }) => {
+    console.log(`\n\n ${type}: ${title}: ${body}: ${JSON.stringify(data)} \n\n`);
   const config = notificationConfig[type] || {
     title: title || 'Notification',
     icon: Bell,
@@ -163,34 +166,90 @@ const CustomToast = ({ type, title, body, data }) => {
 
   const IconComponent = config.icon;
 
+  const navigate = useNavigate();
+
+    const renderButton = (type) => {
+        switch (type) {
+            case 'new_user':
+            return (
+            <button
+                onClick={() => navigate(`${data?.link}`)}
+                className="text-xs px-3 py-1 rounded bg-violet-600 text-white hover:bg-violet-700 transition"
+            >
+                View User
+            </button>
+            );
+
+        case 'auction_won':
+            return (
+            <button
+                onClick={() => navigate(`${data?.link}`)}
+                className="text-xs px-3 py-1 rounded bg-yellow-500 text-black hover:bg-yellow-600 transition"
+            >
+                View Won Auction
+            </button>
+            );
+
+        case 'outbid':
+            return (
+            <button
+                onClick={() => navigate(`${data?.link}`)}
+                className="text-xs px-3 py-1 rounded bg-red-600 text-white hover:bg-red-700 transition"
+            >
+                Place New Bid
+            </button>
+            );
+
+        case 'kyc_approved':
+            return (
+            <button
+                onClick={() => navigate(`${data?.link}`)}
+                className="text-xs px-3 py-1 rounded bg-green-600 text-white hover:bg-green-700 transition"
+            >
+                View KYC
+            </button>
+            );
+
+        case 'auction_created':
+            return (
+            <button
+                onClick={() => navigate(`${data?.link}`)}
+                className="text-xs px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 transition"
+            >
+                View Auction
+            </button>
+            );
+
+            default: return null;
+        }
+    };
+
+    const button = renderButton(type);
+
   return (
-    <div className="flex items-start gap-3 p-4 rounded-lg shadow-lg max-w-sm">
-      <div 
-        className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center"
-        style={{ backgroundColor: config.style.background }}
-      >
-        <IconComponent 
-          size={18} 
-          color={config.iconColor}
-        />
-      </div>
-      <div className="flex-1 min-w-0">
-        <h4 className="font-semibold text-sm text-gray-900 mb-1">
-          {title || config.title}
-        </h4>
-        {body && (
-          <p className="text-sm text-gray-600 leading-tight">
-            {body}
-          </p>
-        )}
-        {data?.auctionId && (
-          <p className="text-xs text-gray-500 mt-1">
-            ID: {data.auctionId.slice(-8)}
-          </p>
-        )}
-      </div>
+  <div className="flex items-start gap-3 p-4 rounded-lg shadow-lg max-w-sm bg-white text-gray-800 border border-gray-200 ">
+    <div 
+      className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center"
+      style={{ backgroundColor: config.style.background }}
+    >
+      <IconComponent size={18} color={config.iconColor} />
     </div>
-  );
+    <div className="flex-1 min-w-0">
+      <h4 className="font-semibold text-sm mb-1">{title || config.title}</h4>
+      {body && (
+        <p className="text-sm leading-tight">
+          {body}
+        </p>
+      )}
+      {button && (
+        <div className="mt-2">
+          {button}
+        </div>
+      )}
+    </div>
+  </div>
+);
+
 };
 
 // Toast utility functions
@@ -211,7 +270,7 @@ export const showNotificationToast = (payload) => {
         data={data}
       />,
       {
-        duration: 6000,
+        duration: 5000,
         position: 'top-right',
         style: {
           boxShadow: 'none',
@@ -227,49 +286,5 @@ export const showNotificationToast = (payload) => {
   }
 };
 
-// Enhanced toast functions for different types
-export const toastHelpers = {
-  auctionCreated: (title, body, data) => 
-    showNotificationToast({ data: { type: 'auction_created', n_title: title, n_body: body, ...data } }),
-  
-  auctionUpdated: (title, body, data) => 
-    showNotificationToast({ data: { type: 'auction_updated', n_title: title, n_body: body, ...data } }),
-  
-  auctionStarted: (title, body, data) => 
-    showNotificationToast({ data: { type: 'auction_started', n_title: title, n_body: body, ...data } }),
-  
-  auctionEndingSoon: (title, body, data) => 
-    showNotificationToast({ data: { type: 'auction_ending_soon', n_title: title, n_body: body, ...data } }),
-  
-  auctionEnded: (title, body, data) => 
-    showNotificationToast({ data: { type: 'auction_ended', n_title: title, n_body: body, ...data } }),
-  
-  bidPlaced: (title, body, data) => 
-    showNotificationToast({ data: { type: 'bid_placed', n_title: title, n_body: body, ...data } }),
-  
-  outbid: (title, body, data) => 
-    showNotificationToast({ data: { type: 'outbid', n_title: title, n_body: body, ...data } }),
-  
-  auctionWon: (title, body, data) => 
-    showNotificationToast({ data: { type: 'auction_won', n_title: title, n_body: body, ...data } }),
-  
-  kycApproved: (title, body, data) => 
-    showNotificationToast({ data: { type: 'kyc_approved', n_title: title, n_body: body, ...data } }),
-  
-  kycRejected: (title, body, data) => 
-    showNotificationToast({ data: { type: 'kyc_rejected', n_title: title, n_body: body, ...data } }),
-  
-  paymentReceived: (title, body, data) => 
-    showNotificationToast({ data: { type: 'payment_received', n_title: title, n_body: body, ...data } }),
-  
-  emdRefunded: (title, body, data) => 
-    showNotificationToast({ data: { type: 'emd_refunded', n_title: title, n_body: body, ...data } }),
-  
-  newUser: (title, body, data) => 
-    showNotificationToast({ data: { type: 'new_user', n_title: title, n_body: body, ...data } }),
-  
-  test: (title, body, data) => 
-    showNotificationToast({ data: { type: 'test', n_title: title, n_body: body, ...data } })
-};
 
 export default CustomToast;

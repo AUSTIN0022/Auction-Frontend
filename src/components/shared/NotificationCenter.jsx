@@ -1,7 +1,8 @@
-import { AlertCircle, Bell, Clock, Gavel, Shield, Trophy, X } from 'lucide-react';
+import { Bell, Clock, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { getAllNotifications } from '../../services/notification';
 import { getUser } from '../../utils/jwtUtils';
+import { getNotificationBg, getNotificationIcon } from '../../utils/notificationUtils';
 
 const NotificationCenter = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -10,6 +11,7 @@ const NotificationCenter = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const dropdownRef = useRef(null);
   const buttonRef = useRef(null);
+  const intervalRef = useRef(null);
 
   const user = getUser();
 
@@ -30,60 +32,56 @@ const NotificationCenter = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Fetch notifications when component mounts or opens
+  // Fetch notifications immediately when component mounts and set up polling
   useEffect(() => {
-    if (isOpen && user?.id) {
+    if (user?.id) {
+      // Initial fetch
       fetchNotifications();
+      
+      // Set up polling every 30 seconds for real-time updates
+      intervalRef.current = setInterval(() => {
+        fetchNotifications(true); // Pass true for silent fetch (no loading state)
+      }, 15000);
     }
-  }, [isOpen, user?.id]);
 
-  const fetchNotifications = async () => {
+    // Cleanup interval on unmount
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [user?.id]);
+
+  const fetchNotifications = async (silent = false) => {
     if (!user?.id) return;
     
-    setLoading(true);
+    if (!silent) setLoading(true);
+    
     try {
       const response = await getAllNotifications(user.id);
       const notificationsList = response.data.notifications || [];
       setNotifications(notificationsList);
       
-      // Calculate unread count (assuming all are unread for now)
-      setUnreadCount(notificationsList.length);
+      // Calculate unread count based on status
+      const unreadNotifications = notificationsList.filter(n => n.status !== 'read');
+      setUnreadCount(unreadNotifications.length);
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
-      setNotifications([]);
+      if (!silent) {
+        setNotifications([]);
+        setUnreadCount(0);
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
-  // Get icon based on notification type
-  const getNotificationIcon = (type) => {
-    switch (type) {
-      case 'kyc_approved':
-        return <Shield className="w-5 h-5 text-green-600" />;
-      case 'bid_placed':
-        return <Gavel className="w-5 h-5 text-blue-600" />;
-      case 'auction_won':
-        return <Trophy className="w-5 h-5 text-yellow-600" />;
-      default:
-        return <AlertCircle className="w-5 h-5 text-gray-600" />;
-    }
+  // Manual refresh function (can be called when user clicks the bell)
+  const refreshNotifications = async () => {
+    await fetchNotifications();
   };
 
-  // Get background color based on notification type
-  const getNotificationBg = (type) => {
-    switch (type) {
-      case 'kyc_approved':
-        return 'bg-green-50 border-green-100';
-      case 'bid_placed':
-        return 'bg-blue-50 border-blue-100';
-      case 'auction_won':
-        return 'bg-yellow-50 border-yellow-100';
-      default:
-        return 'bg-gray-50 border-gray-100';
-    }
-  };
-
+  
   // Format timestamp
   const formatTimestamp = (timestamp) => {
     const date = new Date(timestamp);
@@ -102,12 +100,17 @@ const NotificationCenter = () => {
     }
   };
 
-  const toggleDropdown = () => {
+  const toggleDropdown = async () => {
+    if (!isOpen) {
+      // Refresh notifications when opening the dropdown
+      await refreshNotifications();
+    }
     setIsOpen(!isOpen);
   };
 
-  const markAsRead = (notificationId) => {
+  const markAsRead = async (notificationId) => {
     // This would typically make an API call to mark as read
+    // For now, we'll update the local state
     setNotifications(prev => 
       prev.map(notif => 
         notif._id === notificationId 
@@ -116,13 +119,46 @@ const NotificationCenter = () => {
       )
     );
     setUnreadCount(prev => Math.max(0, prev - 1));
+    
+    // Here you would make an API call:
+    // try {
+    //   await markNotificationAsRead(notificationId);
+    // } catch (error) {
+    //   console.error('Failed to mark notification as read:', error);
+    // }
   };
 
-  const clearAll = () => {
+  const clearAll = async () => {
     // This would typically make an API call to clear all notifications
     setNotifications([]);
     setUnreadCount(0);
+    
+    // Here you would make an API call:
+    // try {
+    //   await clearAllNotifications(user.id);
+    // } catch (error) {
+    //   console.error('Failed to clear notifications:', error);
+    // }
   };
+
+  const markAllAsRead = async () => {
+    setNotifications(prev => 
+      prev.map(notif => ({ ...notif, status: 'read' }))
+    );
+    setUnreadCount(0);
+    
+    // Here you would make an API call:
+    // try {
+    //   await markAllNotificationsAsRead(user.id);
+    // } catch (error) {
+    //   console.error('Failed to mark all as read:', error);
+    // }
+  };
+
+  // Don't render if user is not logged in
+  if (!user?.id) {
+    return null;
+  }
 
   return (
     <div className="relative">
@@ -131,10 +167,11 @@ const NotificationCenter = () => {
         ref={buttonRef}
         onClick={toggleDropdown}
         className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors"
+        title="Notifications"
       >
         <Bell size={18} className="text-gray-600" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium animate-pulse">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
@@ -157,6 +194,14 @@ const NotificationCenter = () => {
               )}
             </div>
             <div className="flex items-center gap-2">
+              {notifications.length > 0 && unreadCount > 0 && (
+                <button
+                  onClick={markAllAsRead}
+                  className="text-xs text-blue-600 hover:text-blue-700 transition-colors"
+                >
+                  Mark all read
+                </button>
+              )}
               {notifications.length > 0 && (
                 <button
                   onClick={clearAll}
@@ -196,6 +241,11 @@ const NotificationCenter = () => {
                     }`}
                   >
                     <div className="flex gap-3">
+                      {/* Unread indicator */}
+                      {notification.status !== 'read' && (
+                        <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                      )}
+                      
                       {/* Icon */}
                       <div className={`flex-shrink-0 p-2 rounded-lg ${getNotificationBg(notification.type)}`}>
                         {getNotificationIcon(notification.type)}
