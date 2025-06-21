@@ -723,8 +723,6 @@ const AuctionDetail = () => {
             {/* Winner Announcement - Show at top for visibility */}
             <WinnerAnnouncement />
             
-            {/* Bid Timer - Show prominently when active */}
-           
 
             {/* Image Gallery */}
             <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
@@ -830,6 +828,8 @@ const AuctionDetail = () => {
                 {/* Add refresh button for active auctions */}
                 {auction.status === 'active' && <RefreshButton />}
               </div>
+              {/* Bid Timer - Show prominently when active */}
+             <BidTimer />
               
               <div className="space-y-4 mb-6">
                 <div className="flex justify-between items-center py-3 border-b border-gray-100">
