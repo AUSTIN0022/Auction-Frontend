@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 const API = axios.create({
-  baseURL:   import.meta.env.VITE_API_BASE_URL || 'https://dev.bidbazaar.shop/api',
+  baseURL: 'http://localhost:3000/api', //  import.meta.env.VITE_API_BASE_URL || 'https://dev.bidbazaar.shop/api',
   withCredentials: true,
 });
 

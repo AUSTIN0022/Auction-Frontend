@@ -723,6 +723,8 @@ const Auction = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column - Images and Description */}
           <div className="lg:col-span-2 space-y-6">
+              {/* Winner Announcement */}
+            <WinnerAnnouncement />
 
             {/* Image Gallery */}
             <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
@@ -756,8 +758,7 @@ const Auction = () => {
                 </div>
               )}
             </div>
-            {/* Winner Announcement */}
-            <WinnerAnnouncement />
+            
             {/* Auction Details Table */}
             <div className="bg-white rounded-2xl shadow-sm p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-6">Auction Details</h2>
@@ -815,7 +816,6 @@ const Auction = () => {
           <div className="space-y-6">
             {/* Timer and Winner announcement in sidebar for mobile/smaller screens */}
             <div className="lg:hidden space-y-4">
-              <WinnerAnnouncement />
               <BidTimer />
             </div>
 

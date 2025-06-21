@@ -724,7 +724,7 @@ const AuctionDetail = () => {
             <WinnerAnnouncement />
             
             {/* Bid Timer - Show prominently when active */}
-            <BidTimer />
+           
 
             {/* Image Gallery */}
             <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
@@ -816,7 +816,7 @@ const AuctionDetail = () => {
           <div className="space-y-6">
             {/* Timer and Winner announcement in sidebar for mobile/smaller screens */}
             <div className="lg:hidden space-y-4">
-
+               <BidTimer />
             </div>
 
             {/* Bidding Summary Card */}
