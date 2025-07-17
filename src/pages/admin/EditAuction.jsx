@@ -17,7 +17,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import AdminLayout from '../../layouts/admin/AdminLayout';
-import { getAuctionById, getAuctionCategories, updateAuction } from '../../services/adminAuctions';
+import { deleteAuction, getAuctionById, getAuctionCategories, updateAuction } from '../../services/adminAuctions';
 
 export default function EditAuction() {
   const { id: auctionId } = useParams();
@@ -229,11 +229,12 @@ export default function EditAuction() {
     }
   };
 
-  const handleDeleteAuction = () => {
+  const handleDeleteAuction = async () => {
     // Implement delete functionality
     if (window.confirm('Are you sure you want to delete this auction? This action cannot be undone.')) {
       // Add delete logic here
       console.log('Delete auction logic to be implemented');
+      await deleteAuction(auctionId);
     }
   };
 
