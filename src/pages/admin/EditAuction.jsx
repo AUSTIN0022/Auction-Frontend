@@ -234,7 +234,9 @@ export default function EditAuction() {
     if (window.confirm('Are you sure you want to delete this auction? This action cannot be undone.')) {
       // Add delete logic here
       console.log('Delete auction logic to be implemented');
-      await deleteAuction(auctionId);
+      const res = await deleteAuction(auctionId);
+      setAlert({ type: 'success', message: 'Auction Deleted successfully!' });
+      setTimeout(() => navigate('/view-auctions'), 1000);
     }
   };
 
